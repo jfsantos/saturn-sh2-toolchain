@@ -1,0 +1,63 @@
+name: Build Toolchain
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-macos-arm64:
+    runs-on: macos-14  # Apple Silicon runner
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: brew install gmp mpfr libmpc isl texinfo wget xorriso
+
+      - name: Build toolchain
+        run: ./build-toolchain.sh
+
+      - name: Verify build
+        run: |
+          toolchain/bin/sh2eb-elf-gcc --version
+          toolchain/bin/sh2eb-elf-g++ --version
+          file toolchain/bin/sh2eb-elf-gcc
+
+      - name: Package toolchain
+        run: |
+          tar czf sh2eb-elf-toolchain-${{ github.ref_name }}-arm64-apple-darwin.tar.gz -C toolchain .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: sh2eb-elf-toolchain-${{ github.ref_name }}-arm64-apple-darwin.tar.gz
+          generate_release_notes: true
+
+  build-linux-x86_64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential texinfo wget \
+            libgmp-dev libmpfr-dev libmpc-dev libisl-dev zlib1g-dev
+
+      - name: Build toolchain
+        run: ./build-toolchain.sh
+
+      - name: Verify build
+        run: |
+          toolchain/bin/sh2eb-elf-gcc --version
+          toolchain/bin/sh2eb-elf-g++ --version
+
+      - name: Package toolchain
+        run: |
+          tar czf sh2eb-elf-toolchain-${{ github.ref_name }}-x86_64-linux-gnu.tar.gz -C toolchain .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: sh2eb-elf-toolchain-${{ github.ref_name }}-x86_64-linux-gnu.tar.gz
+          generate_release_notes: true
